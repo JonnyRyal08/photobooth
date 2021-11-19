@@ -87,46 +87,56 @@ endMain:
 ; Delay in milliseconds
 ;-------------------------------
 Delay:
-     LDI  R22,  3             ;
-Delay1:
+     push r20                 ; hold r20 value just in case
 
-     ldi  R21, 200            ;
-Delay2:
+                              ; set timer1 for .2 seconds
+     ldi  r20,HIGH(65536-3125)
+     sts  tcnt1h,r20
+     ldi  r20,LOW(65536-3125)
+     sts  tcnt1h,r20
 
-     ldi  R20, 250            ;
-Delay3:
-     nop
-     nop
-     dec  R20
-     brne Delay3              ;
+     ldi  r20,0
+     sts  tccr1a,r20          ; normal mode
+     ldi  r20,3
+     sts  tccr1b,r20          ; prescaler 1024 / start
 
-     dec  r21                 ;
-     brne Delay2              ;
+AGAIN:
+     sbis tifr1,tov1
+     rjmp AGAIN
 
-     dec  r22
-     brne Delay1
+     ldi  r20,0
+     sts  tccr1b,r20          ; stop the clock
+     ldi  r20,(1<<tov1)
+     out  tifr1,r20           ; clear tov1
 
+     pop  r20                 ; restore r20
      ret                      ; end Delay
 
+
+
 LongDelay:
-     LDI  R22, 30             ;
-LD1:
+     push r20                 ; hold r20 value just in case
 
-     ldi  R21, 200            ;
-LD2:
+                              ; set timer1 for .2 seconds
+     ldi  r20,HIGH(65536-31250)
+     sts  tcnt1h,r20
+     ldi  r20,LOW(65536-31250)
+     sts  tcnt1h,r20
 
-     ldi  R20, 250            ;
-LD3:
-     nop
-     nop
-     dec  R20
-     brne LD3                 ;
+     ldi  r20,0
+     sts  tccr1a,r20          ; normal mode
+     ldi  r20,3
+     sts  tccr1b,r20          ; prescaler 1024 / start
 
-     dec  r21                 ;
-     brne LD2                 ;
+AGAIN:
+     sbis tifr1,tov1
+     rjmp AGAIN
 
-     dec  r22
-     brne LD1
+     ldi  r20,0
+     sts  tccr1b,r20          ; stop the clock
+     ldi  r20,(1<<tov1)
+     out  tifr1,r20           ; clear tov1
 
+     pop  r20                 ; restore r20
      ret                      ; end LongDelay
      
