@@ -1,0 +1,132 @@
+;
+; GPIOinputHighImp.asm
+;
+; Created: 10/24/2021 6:06:15 PM
+; Author : Jon
+;
+; demo GPIO input high impedance switched led
+
+
+main:
+     ldi  r16, high(RAMEND)   ; set up stack
+     out  SPH, r16            ; *
+     ldi  r16, low(RAMEND)    ; *
+     out  SPL, r16            ; *
+
+     ;config GPIO
+     cbi  DDRB, DDB0          ; make B0 input (switch)
+     cbi  PORTB, PB0          ; make B0 high-impedance
+
+     ;sbi  DDRD, DDD7          ; make D7 outbput
+     ;cbi  PORTD, PD7          ; make sure LED is off
+     
+
+     sbi  DDRB, DDB5          ; set PB5 out (direction register)
+     sbi  DDRD, DDD5          ; set PD5 out
+     sbi  DDRD, DDD4          ; set PD4 out
+     sbi  DDRD, DDD3          ; set PD3 out
+     sbi  DDRD, DDD2          ; set PD2 out
+
+sensor:
+     
+; timer
+
+ 
+
+turnOff:
+     cbi  PORTB, PD5          ; output reg
+     cbi  PORTD, PD5
+     cbi  PORTD, PD4
+     cbi  PORTD, PD3
+     cbi  PORTD, PD2
+     
+     call scan_input
+     
+
+scan_input:
+     sbis PINB, PINB0         ; if pin low
+     ;cbi  PORTD, PD7         ; clear PD7 to turn LED off
+     call turnOff
+     sbic PINB, PINB0         ; else  (input register)
+     call blink
+     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
+     rjmp scan_input          ; 
+
+
+     
+     
+blink:
+     sbi  PORTB, PB5          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB5          ; turn the LED off
+     call Delay               ;
+
+     sbi  PORTD, PD5          ; turn on PD5
+     call Delay
+     cbi  PORTD, PD5          ; turn off PD5
+     call Delay
+     sbi  PORTD, PD4          ; turn on PD4
+     call Delay
+     cbi  PORTD, PD4          ; turn off PD4
+     call Delay
+     sbi  PORTD, PD3          ; turn on PD3
+     call Delay
+     cbi  PORTD, PD3          ; turn off PD3
+     call Delay
+     sbi  PORTD, PD2          ; turn on PD2
+     call Delay
+     cbi  PORTD, PD2          ; turn off PD2
+     call LongDelay
+     ;ret
+     rjmp blink               ;
+
+endMain:
+     rjmp endMain
+
+
+; Delay in milliseconds
+;-------------------------------
+Delay:
+     LDI  R22,  3             ;
+Delay1:
+
+     ldi  R21, 200            ;
+Delay2:
+
+     ldi  R20, 250            ;
+Delay3:
+     nop
+     nop
+     dec  R20
+     brne Delay3              ;
+
+     dec  r21                 ;
+     brne Delay2              ;
+
+     dec  r22
+     brne Delay1
+
+     ret                      ; end Delay
+
+LongDelay:
+     LDI  R22, 30             ;
+LD1:
+
+     ldi  R21, 200            ;
+LD2:
+
+     ldi  R20, 250            ;
+LD3:
+     nop
+     nop
+     dec  R20
+     brne LD3                 ;
+
+     dec  r21                 ;
+     brne LD2                 ;
+
+     dec  r22
+     brne LD1
+
+     ret                      ; end LongDelay
+     
