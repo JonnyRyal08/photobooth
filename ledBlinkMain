@@ -27,34 +27,6 @@ main:
      sbi  DDRD, DDD3          ; set PD3 out
      sbi  DDRD, DDD2          ; set PD2 out
 
-sensor:
-     
-; timer
-
- 
-
-turnOff:
-     cbi  PORTB, PD5          ; output reg
-     cbi  PORTD, PD5
-     cbi  PORTD, PD4
-     cbi  PORTD, PD3
-     cbi  PORTD, PD2
-     
-     call scan_input
-     
-
-scan_input:
-     sbis PINB, PINB0         ; if pin low
-     ;cbi  PORTD, PD7         ; clear PD7 to turn LED off
-     call turnOff
-     sbic PINB, PINB0         ; else  (input register)
-     call blink
-     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
-     rjmp scan_input          ; 
-
-
-     
-     
 blink:
      sbi  PORTB, PB5          ; turn the LED on
      call Delay               ;
@@ -77,11 +49,48 @@ blink:
      call Delay
      cbi  PORTD, PD2          ; turn off PD2
      call LongDelay
-     ;ret
+     
+     call scan_input
      rjmp blink               ;
+     
+
 
 endMain:
      rjmp endMain
+
+     
+     
+     
+
+sensor:
+     
+; timer
+
+ 
+
+turnOff:
+     cbi  PORTB, PD5          ; output reg
+     cbi  PORTD, PD5
+     cbi  PORTD, PD4
+     cbi  PORTD, PD3
+     cbi  PORTD, PD2
+     
+     call scan_input
+     
+
+scan_input:
+     sbic PINB, PINB0         ; if pin low
+     ;cbi  PORTD, PD7         ; clear PD7 to turn LED off
+     ;call turnOff
+     sbis PINB, PINB0         ; else  (input register)
+     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
+     ret
+     rjmp scan_input          ; 
+
+
+     
+     
+
 
 
 ; Delay in milliseconds
@@ -90,10 +99,10 @@ Delay:
      push r20                 ; hold r20 value just in case
 
                               ; set timer1 for .2 seconds
-     ldi  r20,HIGH(65536-3125)
+     ldi  r20,HIGH(65536-2500)
      sts  tcnt1h,r20
-     ldi  r20,LOW(65536-3125)
-     sts  tcnt1h,r20
+     ldi  r20,LOW(65536-2500)
+     sts  tcnt1l,r20
 
      ldi  r20,0
      sts  tccr1a,r20          ; normal mode
@@ -121,16 +130,16 @@ LongDelay:
      ldi  r20,HIGH(65536-31250)
      sts  tcnt1h,r20
      ldi  r20,LOW(65536-31250)
-     sts  tcnt1h,r20
+     sts  tcnt1l,r20
 
      ldi  r20,0
      sts  tccr1a,r20          ; normal mode
      ldi  r20,3
      sts  tccr1b,r20          ; prescaler 1024 / start
 
-AGAIN:
+AGAIN1:
      sbis tifr1,tov1
-     rjmp AGAIN
+     rjmp AGAIN1
 
      ldi  r20,0
      sts  tccr1b,r20          ; stop the clock
