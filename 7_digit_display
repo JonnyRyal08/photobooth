@@ -1,0 +1,211 @@
+;
+; GPIOinputHighImp.asm
+;
+; Created: 10/24/2021 6:06:15 PM
+; Author : Jon
+;
+; demo GPIO input high impedance switched led
+
+
+
+main:
+
+
+SEG_DATA: 
+     .db $3F,$06,$5B,$4F,$66,$6D,$7C,$07,$7F,$67
+     .def digit = r16
+     clr  digit
+
+LoadPointer:
+     ; load Z pointer
+     ldi  ZH,high(SEG_DATA<<1)
+     ldi  ZL,low(SEG_DATA<<1)
+
+     
+     ldi  r16, high(RAMEND)   ; set up stack
+     out  SPH, r16            ; *
+     ldi  r16, low(RAMEND)    ; *
+     out  SPL, r16            ; *
+
+     ;config GPIO
+     cbi  DDRB, DDB0          ; make B0 input (switch)
+     cbi  PORTB, PB0          ; make B0 high-impedance
+     
+     ldi  r16,$FF
+     out  DDRD,r16
+     clr  digit
+
+     
+     
+
+     sbi  DDRB, DDB4          ; set PB4 out (direction register)
+     sbi  DDRB, DDB3          ; set PB3 out
+     sbi  DDRB, DDB2          ; set PB2 out
+     sbi  DDRB, DDB1          ; set PB1 out
+     
+
+blink:
+     sbi  PORTB, PB4          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB4          ; turn the LED off
+     call Delay               ;
+     sbi  PORTB, PB3          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB3          ; turn the LED off
+     call Delay               ;
+     sbi  PORTB, PB2          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB2          ; turn the LED off
+     call Delay               ;
+     sbi  PORTB, PB1          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB1          ; turn the LED off
+     call Delay               ;
+
+     call LongDelay
+     
+     call scan_input
+
+     rjmp blink               ;
+     
+
+
+endMain:
+     rjmp endMain
+
+     
+
+sensor:
+     
+; timer
+
+ 
+
+turnOff:
+     cbi  PORTB, PD5          ; output reg
+     cbi  PORTD, PD5
+     cbi  PORTD, PD4
+     cbi  PORTD, PD3
+     cbi  PORTD, PD2
+     call scan_input1          ; 
+
+     
+
+scan_input:
+     sbic PINB, PINB0         ; if pin low
+     ;cbi  PORTD, PD7         ; clear PD7 to turn LED off
+     call turnOff
+
+     sbis PINB, PINB0         ; else  (input register)
+     call blink
+     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
+     ret
+     ;rjmp scan_input          ; 
+
+scan_input1:
+     sbic PINB, PINB0         ; if pin low
+     call next_digit          ; 
+
+     ;sbis PINB, PINB0        ; else  (input register)
+     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
+     ;ret
+     ;rjmp scan_input          ; 
+
+next_digit:
+     ; load byte from array
+     lpm  r0,Z+
+     ; write to Port-D
+     out  PORTD,r0
+     call Delay250
+     inc  digit
+     cpi  digit,10
+     brne next_digit
+     clr  digit               ; reset digit index
+     sbiw ZH:ZL,10            ; reset pointer to start of array
+     rjmp scan_input    
+
+     
+
+
+; Delay in milliseconds
+;-------------------------------
+Delay:
+     push r20                 ; hold r20 value just in case
+
+                              ; set timer1 for .2 seconds
+     ldi  r20,HIGH(65536-15000)
+     sts  tcnt1h,r20
+     ldi  r20,LOW(65536-15000)
+     sts  tcnt1l,r20
+
+     ldi  r20,0
+     sts  tccr1a,r20          ; normal mode
+     ldi  r20,3
+     sts  tccr1b,r20          ; prescaler 1024 / start
+
+AGAIN:
+     sbis tifr1,tov1
+     rjmp AGAIN
+
+     ldi  r20,0
+     sts  tccr1b,r20          ; stop the clock
+     ldi  r20,(1<<tov1)
+     out  tifr1,r20           ; clear tov1
+
+     pop  r20                 ; restore r20
+     ret                      ; end Delay
+
+
+
+LongDelay:
+     push r20                 ; hold r20 value just in case
+
+                              ; set timer1 for .2 seconds
+     ldi  r20,HIGH(65536-31250)
+     sts  tcnt1h,r20
+     ldi  r20,LOW(65536-31250)
+     sts  tcnt1l,r20
+
+     ldi  r20,0
+     sts  tccr1a,r20          ; normal mode
+     ldi  r20,3
+     sts  tccr1b,r20          ; prescaler 1024 / start
+
+AGAIN1:
+     sbis tifr1,tov1
+     rjmp AGAIN1
+
+     ldi  r20,0
+     sts  tccr1b,r20          ; stop the clock
+     ldi  r20,(1<<tov1)
+     out  tifr1,r20           ; clear tov1
+
+     pop  r20                 ; restore r20
+     ret                      ; end LongDelay
+     
+delay250:
+     clr  r20
+     sts  TCNT1H,r20          ; counter = 0
+     sts  TCNT1L,r20
+ 
+     ldi  r20,high(15624)     ; 250ms @ 16MHz/256
+     sts  OCR1AH,r20
+     ldi  r20,low(15624)
+     sts  OCR1AL,r20
+ 
+     clr  r20
+     sts  TCCR1A,r20          ; ctc mode
+ 
+     ; start timer
+     ldi  r20,(1<<WGM12)|(1<<CS12)
+     sts  TCCR1B,r20          ; ctc, clk/256
+ OCF1A_lp:
+     sbis TIFR1,OCF1A         ; wait for compare match
+     rjmp OCF1A_lp
+ 
+     clr  r20
+     sts  TCCR1B,r20          ; stop timer
+ 
+     sbi  TIFR1,OCF1A         ; clear compare match flag
+ 
+     ret                      ; return Delay250
