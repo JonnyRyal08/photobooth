@@ -8,6 +8,11 @@
 
 
 
+.org 0
+     jmp  main
+.org 0x02
+     jmp  sensor_isr
+
 
 
 main:
@@ -16,12 +21,6 @@ main:
      ldi  r16, low(RAMEND)    ; *
      out  SPL, r16            ; *
 
-SEG_DATA: 
-     .db $3F,$06,$5B,$4F,$66,$6D,$7C,$07,$7F,$67
-     .def digit = r16
-     clr  digit
-
-LoadPointer:
      ; load Z pointer
      ldi  ZH,high(SEG_DATA<<1)
      ldi  ZL,low(SEG_DATA<<1)
@@ -30,20 +29,20 @@ LoadPointer:
 
 
      ;config GPIO
-     cbi  DDRB, DDB0          ; make B0 input (switch)
-     cbi  PORTB, PB0          ; make B0 high-impedance
-     
-     ldi  r16,$FF
-     out  DDRD,r16
-     clr  digit
+     cbi  DDRD, DDRD2          ; make D2 input (switch)
+     cbi  PORTD, PD2           ; make D2 high-impedance
 
      
-     
-
      sbi  DDRB, DDB4          ; set PB4 out (direction register)
      sbi  DDRB, DDB3          ; set PB3 out
      sbi  DDRB, DDB2          ; set PB2 out
      sbi  DDRB, DDB1          ; set PB1 out
+     sbi  DDRB, DDB5
+
+     ; setup interrupt
+     ldi  r20,1<<INT0
+     out  eimsk,r20
+     sei
      
 
 blink:
@@ -66,8 +65,6 @@ blink:
 
      call LongDelay
      
-     call scan_input
-
      rjmp blink               ;
      
 
@@ -75,65 +72,34 @@ blink:
 endMain:
      rjmp endMain
 
-     
-
-sensor:
-     
-; timer
 
  
 
-turnOff:
-     cbi  PORTB, PD4
-     cbi  PORTB, PD3
-     cbi  PORTB, PD2
-     cbi  PORTB, PD1
-     call scan_input1          ; 
-
 turnOn:
-     sbi  PORTB, PD4
-     sbi  PORTB, PD3
-     sbi  PORTB, PD2
-     sbi  PORTB, PD1
-     call scan_input1          ;
-     
-
-     
-
-scan_input:
-     sbic PINB, PINB0         ; if pin low
-     ;cbi  PORTD, PD7         ; clear PD7 to turn LED off
-     call turnOff
-
-     sbis PINB, PINB0         ; else  (input register)
-     call blink
-     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
+     ldi  r16,0b00011110
+     out  portb,r16
      ret
-     ;rjmp scan_input          ; 
 
-scan_input1:
-     sbic PINB, PINB0         ; if pin low
-     call next_digit          ; 
-
-     ;sbis PINB, PINB0        ; else  (input register)
-     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
-     ;ret
-     ;rjmp scan_input          ; 
-
-next_digit:
-     ; load byte from array
-     lpm  r0,Z+
-     ; write to Port-D
-     out  PORTD,r0
-     call Delay250
-     inc  digit
-     cpi  digit,10
-     brne next_digit
-     clr  digit               ; reset digit index
-     sbiw ZH:ZL,10            ; reset pointer to start of array
-     rjmp scan_input    
-
+countDown:
+     ldi  r16,0b00011110
+     out  portb,r16
+     call LongDelay
+     cbi  portb,pb1
+     call LongDelay
+     cbi  portb,pb2
+     call LongDelay
+     cbi  portb,pb3
+     call LongDelay
+     cbi  porb,pb4
+     call flash
+     ret
      
+
+flash:
+     sbi  PORTB,PB5
+     call delay
+     cbi  PORTB,PB5
+     ret
 
 
 ; Delay in milliseconds
@@ -218,3 +184,39 @@ delay250:
      sbi  TIFR1,OCF1A         ; clear compare match flag
  
      ret                      ; return Delay250
+
+
+sensor_isr:
+     call turnOn
+
+     ldi  r20,100			; load 100 into r20
+D1s_1:
+     
+     ldi  r21,200			; load 100 into r21
+D1s_2:
+
+     ldi  r22,200			; load 100 into r22
+D1s_3:
+
+     ldi  r24,9			; load 9 into r24
+D1s_4:
+     nop				; null cycle (1)
+     nop				; null cycle (1)
+     dec  r24			; decrement r24 (1)
+     sbic pind,pd2
+     rjmp end_timer
+     brne D1s_4			; branch to D1s_4 if(!Z) (2/1)
+
+     dec  r22			; decrement r22
+     brne D1s_3			; branch to D1s_3 if(!Z)
+
+     dec  r21			; decrement r21
+     brne D1s_2			; branch to D1s_2 if(!Z)
+
+     dec r20			; decrement r20
+     brne D1s_1			; branch to D1s_1 if(!Z)
+
+end_timer:
+     call countDown
+
+     reti
