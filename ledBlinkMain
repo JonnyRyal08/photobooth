@@ -1,199 +1,200 @@
 ;
-; GPIOinputHighImp.asm
+; GPIOINPUTHIGHIMP.ASM
 ;
-; Created: 10/24/2021 6:06:15 PM
-; Author : Jon
+; CREATED: 10/24/2021 6:06:15 PM
+; AUTHOR : JON
 ;
-; demo GPIO input high impedance switched led
+; DEMO GPIO INPUT HIGH IMPEDANCE SWITCHED LED
 
 
 
-.org 0
-     jmp  main
-.org 0x02
-     call sensor_isr
+.ORG 0
+     JMP  MAIN
+.ORG 0X02
+     CALL SENSOR_ISR
 
 
 
-main:
-     ldi  r16, high(RAMEND)   ; set up stack
-     out  SPH, r16            ; *
-     ldi  r16, low(RAMEND)    ; *
-     out  SPL, r16            ; *     
+MAIN:
+     LDI  R16, HIGH(RAMEND)   ; SET UP STACK
+     OUT  SPH, R16            ; *
+     LDI  R16, LOW(RAMEND)    ; *
+     OUT  SPL, R16            ; *     
 
 
-     ;config GPIO
-     cbi  DDRD, DDD2          ; make D2 input (switch)
-     cbi  PORTD, PD2           ; make D2 high-impedance
+     ;CONFIG GPIO
+     CBI  DDRD, DDD2          ; MAKE D2 INPUT (SWITCH)
+     CBI  PORTD, PD2           ; MAKE D2 HIGH-IMPEDANCE
 
      
-     sbi  DDRB, DDB4          ; set PB4 out (direction register)
-     sbi  DDRB, DDB3          ; set PB3 out
-     sbi  DDRB, DDB2          ; set PB2 out
-     sbi  DDRB, DDB1          ; set PB1 out
-     sbi  DDRB, DDB5
+     SBI  DDRB, DDB4          ; SET PB4 OUT (DIRECTION REGISTER)
+     SBI  DDRB, DDB3          ; SET PB3 OUT
+     SBI  DDRB, DDB2          ; SET PB2 OUT
+     SBI  DDRB, DDB1          ; SET PB1 OUT
+     SBI  DDRB, DDB5
 
-     ; setup interrupt
-     ldi  r20,1<<ISC01
-     sts  eicra,r20
-     ldi  r20,1<<INT0
-     out  eimsk,r20
-     sei
+     ; SETUP INTERRUPT
+     LDI  R20,1<<ISC01
+     STS  EICRA,R20
+     LDI  R20,1<<INT0
+     OUT  EIMSK,R20
+     SEI
      
 
-blink:
-     sbi  PORTB, PB4          ; turn the LED on
-     call Delay               ;
-     cbi  PORTB, PB4          ; turn the LED off
-     call Delay               ;
-     sbi  PORTB, PB3          ; turn the LED on
-     call Delay               ;
-     cbi  PORTB, PB3          ; turn the LED off
-     call Delay               ;
-     sbi  PORTB, PB2          ; turn the LED on
-     call Delay               ;
-     cbi  PORTB, PB2          ; turn the LED off
-     call Delay               ;
-     sbi  PORTB, PB1          ; turn the LED on
-     call Delay               ;
-     cbi  PORTB, PB1          ; turn the LED off
-     call LongDelay
+BLINK:
+     SBI  PORTB, PB4          ; TURN THE LED ON
+     CALL DELAY               ;
+     CBI  PORTB, PB4          ; TURN THE LED OFF
+     CALL DELAY               ;
+     SBI  PORTB, PB3          ; TURN THE LED ON
+     CALL DELAY               ;
+     CBI  PORTB, PB3          ; TURN THE LED OFF
+     CALL DELAY               ;
+     SBI  PORTB, PB2          ; TURN THE LED ON
+     CALL DELAY               ;
+     CBI  PORTB, PB2          ; TURN THE LED OFF
+     CALL DELAY               ;
+     SBI  PORTB, PB1          ; TURN THE LED ON
+     CALL DELAY               ;
+     CBI  PORTB, PB1          ; TURN THE LED OFF
+     CALL LONGDELAY
      
      
-     rjmp blink               ;
+     RJMP BLINK               ;
      
 
 
-endMain:
-     rjmp endMain
+ENDMAIN:
+     RJMP ENDMAIN
 
 
  
 
-turnOn:
-     ldi  r16,0b00011110
-     out  portb,r16
-     ret
+TURNON:
+     LDI  R16,0B00011110
+     OUT  PORTB,R16
+     RET
 
-Photo:
-     ldi  r16,0b00011110
-     out  portb,r16
-     ldi  r20,100             ; reset timers
-     ldi  r21,50
-     ldi  r22,200
-     ldi  r23,9
-     call LongDelay           ; begin countdown
-     cbi  portb,pb1
-     call LongDelay
-     cbi  portb,pb2
-     call LongDelay
-     cbi  portb,pb3
-     call LongDelay
-     cbi  portb,pb4
-     call LongDelay
-     call flash
-     call LongDelay
-     call LongDelay
-     call turnOn
-     ret
+PHOTO:
+     LDI  R16,0B00011110
+     OUT  PORTB,R16
+     LDI  R20,100             ; RESET ISR DELAY
+     LDI  R21,50
+     LDI  R22,200
+     LDI  R23,9
+     CALL LONGDELAY           ; BEGIN COUNTDOWN
+     CBI  PORTB,PB1
+     CALL LONGDELAY
+     CBI  PORTB,PB2
+     CALL LONGDELAY
+     CBI  PORTB,PB3
+     CALL LONGDELAY
+     CBI  PORTB,PB4
+     CALL LONGDELAY
+     CALL FLASH
+     CALL LONGDELAY
+     CALL LONGDELAY
+     CALL TURNON
+     RET
      
 
-flash:
-     sbi  PORTB,PB5
-     call delay
-     cbi  PORTB,PB5
-     ret
+FLASH:
+     SBI  PORTB,PB5
+     CALL DELAY
+     CBI  PORTB,PB5
+     RET
 
 
-; Delay in milliseconds
+; DELAY IN MILLISECONDS
 ;-------------------------------
-Delay:
-     push r20                 ; hold r20 value just in case
+DELAY:
+     PUSH R20                 ; HOLD R20 VALUE JUST IN CASE
 
-                              ; set timer1 for .2 seconds
-     ldi  r20,HIGH(65536-3125)
-     sts  tcnt1h,r20
-     ldi  r20,LOW(65536-3125)
-     sts  tcnt1l,r20
+                              ; SET TIMER1 FOR .2 SECONDS
+     LDI  R20,HIGH(65536-3125)
+     STS  TCNT1H,R20
+     LDI  R20,LOW(65536-3125)
+     STS  TCNT1L,R20
      
-     ldi  r20,0
-     sts  tccr1a,r20          ; normal mode
-     ldi  r20,4
-     sts  tccr1b,r20          ; prescaler 1024 / start
+     LDI  R20,0
+     STS  TCCR1A,R20          ; NORMAL MODE
+     LDI  R20,4
+     STS  TCCR1B,R20          ; PRESCALER 1024 / START
 
 AGAIN:
-     sbis tifr1,tov1
-     rjmp AGAIN
+     SBIS TIFR1,TOV1
+     RJMP AGAIN
 
-     ldi  r20,0
-     sts  tccr1b,r20          ; stop the clock
-     ldi  r20,(1<<tov1)
-     out  tifr1,r20           ; clear tov1
+     LDI  R20,0
+     STS  TCCR1B,R20          ; STOP THE CLOCK
+     LDI  R20,(1<<TOV1)
+     OUT  TIFR1,R20           ; CLEAR TOV1
 
-     pop  r20                 ; restore r20
-     ret                      ; end Delay
+     POP  R20                 ; RESTORE R20
+     RET                      ; END DELAY
 
 
 
-LongDelay:
-     push r20                 ; hold r20 value just in case
+LONGDELAY:
+     PUSH R20                 ; HOLD R20 VALUE JUST IN CASE
 
-                              ; set timer1 for .2 seconds
-     ldi  r20,HIGH(65536-12500)
-     sts  tcnt1h,r20
-     ldi  r20,LOW(65536-12500)
-     sts  tcnt1l,r20
+                              ; SET TIMER1 FOR .2 SECONDS
+     LDI  R20,HIGH(65536-12500)
+     STS  TCNT1H,R20
+     LDI  R20,LOW(65536-12500)
+     STS  TCNT1L,R20
 
-     ldi  r20,0
-     sts  tccr1a,r20          ; normal mode
-     ldi  r20,5
-     sts  tccr1b,r20          ; prescaler 1024 / start
+     LDI  R20,0
+     STS  TCCR1A,R20          ; NORMAL MODE
+     LDI  R20,5
+     STS  TCCR1B,R20          ; PRESCALER 1024 / START
 
 AGAIN1:
-     sbis tifr1,tov1
-     rjmp AGAIN1
+     SBIS TIFR1,TOV1
+     RJMP AGAIN1
 
-     ldi  r20,0
-     sts  tccr1b,r20          ; stop the clock
-     ldi  r20,(1<<tov1)
-     out  tifr1,r20           ; clear tov1
+     LDI  R20,0
+     STS  TCCR1B,R20          ; STOP THE CLOCK
+     LDI  R20,(1<<TOV1)
+     OUT  TIFR1,R20           ; CLEAR TOV1
 
-     pop  r20                 ; restore r20
-     ret                      ; end LongDelay
+     POP  R20                 ; RESTORE R20
+     RET                      ; END LONGDELAY
      
 
 
 
-sensor_isr:
-     call turnOn
+SENSOR_ISR:
+     CALL TURNON
+     CALL LONGDELAY
 
-     ldi  r20,100			; load 100 into r20
-D1s_1:
+     LDI  R20,100			; LOAD 100 INTO R20
+D1S_1:
      
-     ldi  r21,50			; load 100 into r21
-D1s_2:
+     LDI  R21,50			; LOAD 100 INTO R21
+D1S_2:
 
-     ldi  r22,200			; load 100 into r22
-D1s_3:
+     LDI  R22,200			; LOAD 100 INTO R22
+D1S_3:
 
-     ldi  r24,9			; load 9 into r24
-D1s_4:
-     nop				     ; null cycle (1)
-     nop				     ; null cycle (1)
-     dec  r24			     ; decrement r24 (1)
-     sbic pind,pd2
-     call Photo
-     brne D1s_4		     ; branch to D1s_4 if(!Z) (2/1)
+     LDI  R24,9			; LOAD 9 INTO R24
+D1S_4:
+     NOP				     ; NULL CYCLE (1)
+     NOP				     ; NULL CYCLE (1)
+     DEC  R24			     ; DECREMENT R24 (1)
+     SBIC PIND,PD2
+     CALL PHOTO
+     BRNE D1S_4		     ; BRANCH TO D1S_4 IF(!Z) (2/1)
 
-     dec  r22			     ; decrement r22
-     brne D1s_3		     ; branch to D1s_3 if(!Z)
+     DEC  R22			     ; DECREMENT R22
+     BRNE D1S_3		     ; BRANCH TO D1S_3 IF(!Z)
 
-     dec  r21			     ; decrement r21
-     brne D1s_2			; branch to D1s_2 if(!Z)
+     DEC  R21			     ; DECREMENT R21
+     BRNE D1S_2			; BRANCH TO D1S_2 IF(!Z)
 
-     dec r20			     ; decrement r20
-     brne D1s_1			; branch to D1s_1 if(!Z)
+     DEC R20			     ; DECREMENT R20
+     BRNE D1S_1			; BRANCH TO D1S_1 IF(!Z)
 
 
 
-     reti
+     RETI
