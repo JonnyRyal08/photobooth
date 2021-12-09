@@ -7,50 +7,59 @@
 ; demo GPIO input high impedance switched led
 
 
+
+.org 0
+     jmp  main
+.org 0x02
+     call sensor_isr
+
+
+
 main:
      ldi  r16, high(RAMEND)   ; set up stack
      out  SPH, r16            ; *
      ldi  r16, low(RAMEND)    ; *
-     out  SPL, r16            ; *
+     out  SPL, r16            ; *     
+
 
      ;config GPIO
-     cbi  DDRB, DDB0          ; make B0 input (switch)
-     cbi  PORTB, PB0          ; make B0 high-impedance
+     cbi  DDRD, DDD2          ; make D2 input (switch)
+     cbi  PORTD, PD2           ; make D2 high-impedance
 
-     ;sbi  DDRD, DDD7          ; make D7 outbput
-     ;cbi  PORTD, PD7          ; make sure LED is off
      
+     sbi  DDRB, DDB4          ; set PB4 out (direction register)
+     sbi  DDRB, DDB3          ; set PB3 out
+     sbi  DDRB, DDB2          ; set PB2 out
+     sbi  DDRB, DDB1          ; set PB1 out
+     sbi  DDRB, DDB5
 
-     sbi  DDRB, DDB5          ; set PB5 out (direction register)
-     sbi  DDRD, DDD5          ; set PD5 out
-     sbi  DDRD, DDD4          ; set PD4 out
-     sbi  DDRD, DDD3          ; set PD3 out
-     sbi  DDRD, DDD2          ; set PD2 out
+     ; setup interrupt
+     ldi  r20,1<<ISC01
+     sts  eicra,r20
+     ldi  r20,1<<INT0
+     out  eimsk,r20
+     sei
+     
 
 blink:
-     sbi  PORTB, PB5          ; turn the LED on
+     sbi  PORTB, PB4          ; turn the LED on
      call Delay               ;
-     cbi  PORTB, PB5          ; turn the LED off
+     cbi  PORTB, PB4          ; turn the LED off
      call Delay               ;
-
-     sbi  PORTD, PD5          ; turn on PD5
-     call Delay
-     cbi  PORTD, PD5          ; turn off PD5
-     call Delay
-     sbi  PORTD, PD4          ; turn on PD4
-     call Delay
-     cbi  PORTD, PD4          ; turn off PD4
-     call Delay
-     sbi  PORTD, PD3          ; turn on PD3
-     call Delay
-     cbi  PORTD, PD3          ; turn off PD3
-     call Delay
-     sbi  PORTD, PD2          ; turn on PD2
-     call Delay
-     cbi  PORTD, PD2          ; turn off PD2
+     sbi  PORTB, PB3          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB3          ; turn the LED off
+     call Delay               ;
+     sbi  PORTB, PB2          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB2          ; turn the LED off
+     call Delay               ;
+     sbi  PORTB, PB1          ; turn the LED on
+     call Delay               ;
+     cbi  PORTB, PB1          ; turn the LED off
      call LongDelay
      
-     call scan_input
+     
      rjmp blink               ;
      
 
@@ -58,39 +67,42 @@ blink:
 endMain:
      rjmp endMain
 
-     
-     
-     
-
-sensor:
-     
-; timer
 
  
 
-turnOff:
-     cbi  PORTB, PD5          ; output reg
-     cbi  PORTD, PD5
-     cbi  PORTD, PD4
-     cbi  PORTD, PD3
-     cbi  PORTD, PD2
-     
-     call scan_input
-     
-
-scan_input:
-     sbic PINB, PINB0         ; if pin low
-     ;cbi  PORTD, PD7         ; clear PD7 to turn LED off
-     ;call turnOff
-     sbis PINB, PINB0         ; else  (input register)
-     ;sbi  PORTD, PD7         ; set PD7 to turn LED on
+turnOn:
+     ldi  r16,0b00011110
+     out  portb,r16
      ret
-     rjmp scan_input          ; 
 
-
+Photo:
+     ldi  r16,0b00011110
+     out  portb,r16
+     ldi  r20,100             ; reset timers
+     ldi  r21,50
+     ldi  r22,200
+     ldi  r23,9
+     call LongDelay           ; begin countdown
+     cbi  portb,pb1
+     call LongDelay
+     cbi  portb,pb2
+     call LongDelay
+     cbi  portb,pb3
+     call LongDelay
+     cbi  portb,pb4
+     call LongDelay
+     call flash
+     call LongDelay
+     call LongDelay
+     call turnOn
+     ret
      
-     
 
+flash:
+     sbi  PORTB,PB5
+     call delay
+     cbi  PORTB,PB5
+     ret
 
 
 ; Delay in milliseconds
@@ -99,14 +111,14 @@ Delay:
      push r20                 ; hold r20 value just in case
 
                               ; set timer1 for .2 seconds
-     ldi  r20,HIGH(65536-2500)
+     ldi  r20,HIGH(65536-3125)
      sts  tcnt1h,r20
-     ldi  r20,LOW(65536-2500)
+     ldi  r20,LOW(65536-3125)
      sts  tcnt1l,r20
-
+     
      ldi  r20,0
      sts  tccr1a,r20          ; normal mode
-     ldi  r20,3
+     ldi  r20,4
      sts  tccr1b,r20          ; prescaler 1024 / start
 
 AGAIN:
@@ -127,14 +139,14 @@ LongDelay:
      push r20                 ; hold r20 value just in case
 
                               ; set timer1 for .2 seconds
-     ldi  r20,HIGH(65536-31250)
+     ldi  r20,HIGH(65536-12500)
      sts  tcnt1h,r20
-     ldi  r20,LOW(65536-31250)
+     ldi  r20,LOW(65536-12500)
      sts  tcnt1l,r20
 
      ldi  r20,0
      sts  tccr1a,r20          ; normal mode
-     ldi  r20,3
+     ldi  r20,5
      sts  tccr1b,r20          ; prescaler 1024 / start
 
 AGAIN1:
@@ -149,3 +161,39 @@ AGAIN1:
      pop  r20                 ; restore r20
      ret                      ; end LongDelay
      
+
+
+
+sensor_isr:
+     call turnOn
+
+     ldi  r20,100			; load 100 into r20
+D1s_1:
+     
+     ldi  r21,50			; load 100 into r21
+D1s_2:
+
+     ldi  r22,200			; load 100 into r22
+D1s_3:
+
+     ldi  r24,9			; load 9 into r24
+D1s_4:
+     nop				     ; null cycle (1)
+     nop				     ; null cycle (1)
+     dec  r24			     ; decrement r24 (1)
+     sbic pind,pd2
+     call Photo
+     brne D1s_4		     ; branch to D1s_4 if(!Z) (2/1)
+
+     dec  r22			     ; decrement r22
+     brne D1s_3		     ; branch to D1s_3 if(!Z)
+
+     dec  r21			     ; decrement r21
+     brne D1s_2			; branch to D1s_2 if(!Z)
+
+     dec r20			     ; decrement r20
+     brne D1s_1			; branch to D1s_1 if(!Z)
+
+
+
+     reti
